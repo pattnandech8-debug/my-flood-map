@@ -72,7 +72,7 @@
 
         /* การแต่งสไตล์ Popup บนแผนที่ */
         .popup-content {
-            width: 240px;
+            width: 250px;
         }
         .popup-content h3 {
             margin: 0 0 6px 0;
@@ -90,19 +90,48 @@
         .badge-normal { background-color: #dcfce7; color: #166534; }
         .badge-flooded { background-color: #fee2e2; color: #991b1b; }
         
+        .cctv-container {
+            position: relative;
+            margin-top: 6px;
+        }
         .cctv-preview {
             width: 100%;
             height: 140px;
             object-fit: cover;
             border-radius: 8px;
-            margin-top: 6px;
             border: 1px solid #cbd5e1;
             background-color: #f1f5f9;
+            display: block;
+        }
+        /* ปุ่มกด Refresh ภาพสด */
+        .btn-refresh {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .btn-refresh:hover {
+            background-color: #0369a1;
+        }
+        .btn-refresh:active {
+            transform: scale(0.98);
         }
         .meta-text {
             font-size: 11px;
             color: #64748b;
             margin-top: 6px;
+            text-align: right;
         }
     </style>
 </head>
@@ -131,7 +160,6 @@
         }).addTo(map);
 
         // 3. ข้อมูลจุดกล้อง CCTV ตัวอย่างในจุดสำคัญของ กทม.
-        // (สามารถเพิ่ม/แก้ไขพิกัด หรือเปลี่ยนลิงก์รูป CCTV ได้ที่นี่)
         const cctvLocations = [
             {
                 id: "CCTV-01",
@@ -140,7 +168,7 @@
                 lng: 100.5739,
                 isFlooded: true,
                 waterLevel: "ขังสูงประมาณ 10-15 ซม. (เลนซ้ายสุด)",
-                imgUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=500&q=80", // รูปตัวอย่าง
+                baseUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=500&q=80",
                 updatedAt: "14:45 น."
             },
             {
@@ -150,7 +178,7 @@
                 lng: 100.5604,
                 isFlooded: false,
                 waterLevel: "แห้งปกติ",
-                imgUrl: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500&q=80",
+                baseUrl: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500&q=80",
                 updatedAt: "14:50 น."
             },
             {
@@ -160,7 +188,7 @@
                 lng: 100.5966,
                 isFlooded: true,
                 waterLevel: "ขังเล็กน้อย บริเวณทางเลี้ยว",
-                imgUrl: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=500&q=80",
+                baseUrl: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=500&q=80",
                 updatedAt: "14:42 น."
             },
             {
@@ -170,7 +198,7 @@
                 lng: 100.5662,
                 isFlooded: false,
                 waterLevel: "แห้งปกติ",
-                imgUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=500&q=80",
+                baseUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=500&q=80",
                 updatedAt: "14:51 น."
             },
             {
@@ -180,14 +208,35 @@
                 lng: 100.6461,
                 isFlooded: true,
                 waterLevel: "เสี่ยงท่วมขังเสมอฟุตบาท",
-                imgUrl: "https://images.unsplash.com/photo-1508873696983-2df515122519?w=500&q=80",
+                baseUrl: "https://images.unsplash.com/photo-1508873696983-2df515122519?w=500&q=80",
                 updatedAt: "14:38 น."
             }
         ];
 
-        // 4. วนลูปปักหมุดลงบนแผนที่
+        // 4. ฟังก์ชันสำหรับโหลดรูปภาพใหม่ป้องกันแคช (Cache Busting)
+        function refreshCCTVImage(imgId, baseUrl, timeId) {
+            const imgElement = document.getElementById(imgId);
+            const timeElement = document.getElementById(timeId);
+            
+            if (imgElement) {
+                // เติม Timestamp เพื่อบังคับให้เบราว์เซอร์ดึงภาพเวอร์ชันล่าสุด
+                const timestamp = new Date().getTime();
+                const separator = baseUrl.includes('?') ? '&' : '?';
+                imgElement.src = `${baseUrl}${separator}_t=${timestamp}`;
+                
+                // อัปเดตเวลาการกดดึงภาพล่าสุด
+                if (timeElement) {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    timeElement.innerText = `อัปเดตล่าสุด: ${hours}:${minutes}:${seconds} น.`;
+                }
+            }
+        }
+
+        // 5. วนลูปปักหมุดลงบนแผนที่
         cctvLocations.forEach(loc => {
-            // สร้าง Icon แบบวงกลมที่มีเอฟเฟกต์สีตามสถานะ
             const colorClass = loc.isFlooded ? '#ef4444' : '#22c55e';
             const customIcon = L.divIcon({
                 className: 'custom-pin',
@@ -203,7 +252,9 @@
                 iconAnchor: [10, 10]
             });
 
-            // สร้างข้อความรายละเอียด Popup
+            const imgElementId = `img-${loc.id}`;
+            const timeElementId = `time-${loc.id}`;
+
             const popupHtml = `
                 <div class="popup-content">
                     <h3>${loc.name}</h3>
@@ -212,12 +263,16 @@
                     </span>
                     <br>
                     <small><b>สถานะน้ำ:</b> ${loc.waterLevel}</small>
-                    <img class="cctv-preview" src="${loc.imgUrl}" alt="ภาพกล้องวงจรปิด">
-                    <div class="meta-text">⏰ อัปเดตล่าสุด: ${loc.updatedAt}</div>
+                    <div class="cctv-container">
+                        <img id="${imgElementId}" class="cctv-preview" src="${loc.baseUrl}" alt="ภาพกล้องวงจรปิด">
+                    </div>
+                    <button class="btn-refresh" onclick="refreshCCTVImage('${imgElementId}', '${loc.baseUrl}', '${timeElementId}')">
+                        🔄 รีเฟรชภาพ CCTV
+                    </button>
+                    <div id="${timeElementId}" class="meta-text">อัปเดตล่าสุด: ${loc.updatedAt}</div>
                 </div>
             `;
 
-            // ปักหมุดลงบนแผนที่
             L.marker([loc.lat, loc.lng], { icon: customIcon })
                 .addTo(map)
                 .bindPopup(popupHtml);
