@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>กล้อง CCTV จราจร Real-time ทั่ว กทม. & ปริมณฑล (Longdo Map API)</title>
+    <title>รายงานสถานะน้ำท่วม (Gemini AI Analysis)</title>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
 
@@ -22,46 +21,38 @@
         }
         .info-card h2 { margin: 0 0 4px 0; font-size: 17px; color: #0f172a; }
         .subtitle { font-size: 12px; color: #64748b; margin-bottom: 8px; }
-        .badge-api { background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .badge-gemini { background: #7c3aed; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
 
-        /* Status Box */
         .status-box {
-            font-size: 11px; padding: 6px 10px; background: #e0f2fe; border: 1px solid #bae6fd;
-            border-radius: 6px; margin-bottom: 8px; font-weight: 600; color: #0369a1;
-            display: flex; align-items: center; justify-content: space-between;
+            font-size: 11px; padding: 6px; background: #f1f5f9;
+            border-radius: 6px; margin-bottom: 8px; text-align: center; font-weight: 600; color: #334155;
         }
 
-        /* Search Box */
         .search-container { margin-bottom: 8px; }
         .search-input {
-            width: 100%; padding: 8px 10px; border-radius: 6px;
+            width: 100%; padding: 7px 10px; border-radius: 6px;
             border: 1px solid #cbd5e1; font-size: 12px; outline: none;
         }
-        .search-input:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15); }
 
-        /* Sidebar Camera List */
         .camera-list { max-height: 180px; overflow-y: auto; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
         .camera-item { font-size: 11px; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; cursor: pointer; color: #0369a1; }
         .camera-item:hover { background-color: #f0f9ff; font-weight: bold; }
 
-        /* Popup Styling */
         .popup-content { width: 250px; }
         .popup-content h3 { margin: 0 0 4px 0; font-size: 14px; color: #0f172a; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-bottom: 4px; }
+        .badge-normal { background-color: #dcfce7; color: #166534; }
+        .badge-flooded { background-color: #fee2e2; color: #991b1b; }
         .cctv-preview { width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-top: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; display: block; }
-        .btn-refresh { width: 100%; margin-top: 6px; padding: 6px; background: #0284c7; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; }
-        .btn-refresh:hover { background-color: #0369a1; }
     </style>
 </head>
 <body>
 
     <div class="info-card">
-        <h2>📷 กล้อง CCTV จราจร Real-time</h2>
-        <div class="subtitle">เชื่อมต่อฐานข้อมูลสดผ่าน <span class="badge-api">Longdo Map API</span></div>
+        <h2>📷 รายงานน้ำท่วม CCTV</h2>
+        <div class="subtitle">วิเคราะห์ภาพโดย <span class="badge-gemini">Gemini AI</span></div>
         
-        <div class="status-box">
-            <span id="statusText">⏳ กำลังดึงจุดกล้องจาก Longdo...</span>
-            <button onclick="fetchLongdoCameras()" style="font-size:10px; cursor:pointer; padding:2px 5px; border:1px solid #0284c7; background:#fff; color:#0284c7; border-radius:4px;">🔄 ดึงใหม่</button>
-        </div>
+        <div id="statusBox" class="status-box">⏳ กำลังโหลดไฟล์ flood_data.json...</div>
 
         <div class="search-container">
             <input type="text" id="searchInput" class="search-input" placeholder="🔍 ค้นหาชื่อจุดกล้อง หรือ ถนน..." oninput="onSearchChange()">
@@ -72,58 +63,31 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. ตั้งพิกัดกึ่งกลางที่กรุงเทพฯ
         const map = L.map('map').setView([13.7563, 100.5018], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
-            attribution: '© OpenStreetMap contributors | Data by Longdo Map API'
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-        // API Key ของคุณ
-        const LONGDO_API_KEY = "8df7c58d93c1a2fdcaee05f9fe3e2b93";
 
         let allCameras = [];
         let markersLayerGroup = L.layerGroup().addTo(map);
         let markerInstances = {};
         let searchQuery = '';
 
-        // 2. ดึงข้อมูลกล้อง CCTV ทั้งหมดจาก Longdo Traffic API ผ่าน Proxy แก้ CORS
-        async function fetchLongdoCameras() {
-            const statusText = document.getElementById('statusText');
-            statusText.innerText = "⏳ กำลังดึงกล้องสดจาก Longdo...";
-
-            const targetUrl = `https://api.longdo.com/traffic/json/cameras?key=${LONGDO_API_KEY}`;
-            // ใช้ proxy ของ allorigins เพื่อทะลุ CORS บล็อกบน GitHub Pages
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-
+        async function loadJSONData() {
+            const statusBox = document.getElementById('statusBox');
             try {
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error("API Connection Failed");
-
-                const data = await response.json();
-
-                if (Array.isArray(data) && data.length > 0) {
-                    allCameras = data;
-                    statusText.innerText = `✅ โหลดสำเร็จ! พบกล้อง ${allCameras.length} จุด`;
-                    renderMap();
-                } else {
-                    statusText.innerText = "⚠️ ไม่พบรายการกล้องจาก API";
-                }
+                // ดึงไฟล์ flood_data.json ที่ได้จากสคริปต์ Python
+                const response = await fetch('flood_data.json?_t=' + new Date().getTime());
+                if (!response.ok) throw new Error("File not found");
+                
+                allCameras = await response.json();
+                statusBox.innerText = `✅ โหลดสำเร็จ! พบทั้งหมด ${allCameras.length} จุด`;
+                renderMap();
             } catch (error) {
-                console.error("ดึงข้อมูลกล้อง Longdo ล้มเหลว:", error);
-                statusText.innerText = "❌ ดึงกล้องไม่สำเร็จ (โปรดลองกดปุ่มดึงใหม่)";
-            }
-        }
-
-        function refreshImage(imgId, baseUrl) {
-            const imgEl = document.getElementById(imgId);
-            if (imgEl && baseUrl) {
-                const ts = new Date().getTime();
-                const sep = baseUrl.includes('?') ? '&' : '?';
-                imgEl.src = `${baseUrl}${sep}_t=${ts}`;
+                statusBox.innerText = "⚠️️ ยังไม่มีไฟล์ flood_data.json (กรุณารัน python analyze.py แล้วอัปโหลดไฟล์ขึ้น GitHub)";
             }
         }
 
@@ -134,7 +98,6 @@
             }
         }
 
-        // 3. ปักหมุดกล้องทั้งหมดลงบน Leaflet
         function renderMap() {
             markersLayerGroup.clearLayers();
             markerInstances = {};
@@ -144,49 +107,46 @@
             let bounds = [];
 
             allCameras.forEach(cam => {
-                const title = cam.title || cam.name || "กล้อง CCTV จราจร";
+                const title = cam.name || "กล้อง CCTV จราจร";
                 const lat = parseFloat(cam.lat);
-                const lng = parseFloat(cam.long || cam.lng);
-                const imgUrl = cam.url || cam.image || "";
+                const lng = parseFloat(cam.lng);
+                const isFlooded = cam.isFlooded === true;
 
                 if (isNaN(lat) || isNaN(lng)) return;
                 if (searchQuery && !title.toLowerCase().includes(searchQuery.toLowerCase())) return;
 
                 bounds.push([lat, lng]);
 
-                // สร้างไอคอนหมุดสีฟ้า
+                const colorClass = isFlooded ? '#dc2626' : '#22c55e';
                 const customIcon = L.divIcon({
                     className: 'custom-pin',
-                    html: `<div style="background-color: #0284c7; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.3);"></div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8]
+                    html: `<div style="background-color: ${colorClass}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
                 });
 
-                const imgId = `img-${cam.id}`;
                 const popupHtml = `
                     <div class="popup-content">
                         <h3>📹 ${title}</h3>
-                        <img id="${imgId}" class="cctv-preview" src="${imgUrl}" alt="ภาพสด CCTV">
-                        <button class="btn-refresh" onclick="refreshImage('${imgId}', '${imgUrl}')">🔄 กดดึงภาพสดใหม่</button>
+                        <span class="badge ${isFlooded ? 'badge-flooded' : 'badge-normal'}">
+                            ${isFlooded ? '⚠️ พบน้ำท่วมขัง' : '✅ ปกติ'}
+                        </span>
+                        <br>
+                        <small><b>AI วิเคราะห์:</b> ${cam.waterLevel || 'ไม่มีข้อมูล'}</small>
+                        <img class="cctv-preview" src="${cam.baseUrl}" alt="ภาพสด">
                     </div>
                 `;
 
                 const marker = L.marker([lat, lng], { icon: customIcon }).bindPopup(popupHtml);
-                marker.on('popupopen', () => refreshImage(imgId, imgUrl));
                 markersLayerGroup.addLayer(marker);
                 markerInstances[cam.id] = marker;
 
-                // เพิ่มลงใน Sidebar ค้นหา
                 const item = document.createElement('div');
                 item.className = 'camera-item';
                 item.onclick = () => focusLocation(lat, lng, cam.id);
-                item.innerHTML = `📷 ${title}`;
+                item.innerHTML = `${isFlooded ? '⚠️' : '🟢'} ${title}`;
                 cameraContainer.appendChild(item);
             });
-
-            if (cameraContainer.children.length === 0) {
-                cameraContainer.innerHTML = '<div style="font-size:11px; color:#64748b;">ไม่พบจุดกล้องที่ตรงตามคำค้นหา</div>';
-            }
 
             if (bounds.length > 0 && !searchQuery) {
                 map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
@@ -198,8 +158,7 @@
             renderMap();
         }
 
-        // เริ่มต้นโหลดจุดกล้องทันทีที่เปิดเว็บ
-        fetchLongdoCameras();
+        loadJSONData();
     </script>
 </body>
 </html>
