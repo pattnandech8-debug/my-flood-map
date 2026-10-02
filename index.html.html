@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานสถานะน้ำท่วม BMA CCTV</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Sukhumvit Set', Arial, sans-serif; }
+        #map { height: 100vh; width: 100vw; }
+        .info-panel {
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-width: 300px;
+        }
+        .status-flooded { color: #d32f2f; font-weight: bold; }
+        .status-normal { color: #388e3c; font-weight: bold; }
+        .cctv-img { width: 100%; border-radius: 4px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h3>🌧️ รายงานน้ำท่วม กทม. (CCTV)</h3>
+        <p>สถานะสัญลักษณ์:</p>
+        <p>🔴 พบน้ำท่วมขัง | 🟢 ปกติ</p>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // สร้างแผนที่ตั้งต้นตรงกลางที่กรุงเทพฯ
+        const map = L.map('map').setView([13.7563, 100.5018], 12);
+
+        // ดึงกระเบื้องแผนที่จาก OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // ข้อมูลตัวอย่างจุดกล้อง CCTV ที่ผ่านการวิเคราะห์จาก Gemini API แล้ว
+        const cctvData = [
+            {
+                id: "CCTV-001",
+                name: "แยกแยกรัชดา-ลาดพร้าว",
+                lat: 13.8062,
+                lng: 100.5739,
+                isFlooded: true,
+                severity: "ปานกลาง (ประมาณ 10-15 ซม.)",
+                imgUrl: "https://via.placeholder.com/300x200?text=CCTV+Ratchada-Latphrao", // เปลี่ยนเป็น URL ภาพจริง
+                updatedAt: "14:30 น."
+            },
+            {
+                id: "CCTV-002",
+                name: "แยกอโศกมนตรี",
+                lat: 13.7370,
+                lng: 100.5604,
+                isFlooded: false,
+                severity: "ปกติ",
+                imgUrl: "https://via.placeholder.com/300x200?text=CCTV+Asok",
+                updatedAt: "14:32 น."
+            }
+        ];
+
+        // วนลูปสร้าง Marker ปักหมุดบนแผนที่
+        cctvData.forEach(camera => {
+            // เลือกสีหมุดตามสถานะน้ำท่วม
+            const markerColor = camera.isFlooded ? "red" : "green";
+            
+            // สร้าง Icon แบบง่าย
+            const customIcon = L.divIcon({
+                className: 'custom-pin',
+                html: `<div style="background-color: ${markerColor}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white;"></div>`
+            });
+
+            const popupContent = `
+                <div>
+                    <h4>${camera.name}</h4>
+                    <p><b>สถานะ:</b> <span class="${camera.isFlooded ? 'status-flooded' : 'status-normal'}">
+                        ${camera.isFlooded ? '⚠️ มีน้ำท่วมขัง' : '✅ ปกติ'}
+                    </span></p>
+                    <p><b>ระดับ:</b> ${camera.severity}</p>
+                    <p><b>อัปเดตล่าสุด:</b> ${camera.updatedAt}</p>
+                    <img class="cctv-img" src="${camera.imgUrl}" alt="ภาพจากกล้อง CCTV">
+                </div>
+            `;
+
+            L.marker([camera.lat, camera.lng], { icon: customIcon })
+                .addTo(map)
+                .bindPopup(popupContent);
+        });
+    </script>
+</body>
+</html>
