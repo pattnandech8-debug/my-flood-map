@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบรายงานสถานะน้ำท่วม Real-time (iTIC Live Data Feed)</title>
+    <title>รายงานสถานะน้ำท่วม Real-time ทั่วประเทศ</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -22,11 +22,10 @@
         }
         .info-card h2 { margin: 0 0 4px 0; font-size: 17px; color: #0f172a; }
         .subtitle { font-size: 12px; color: #64748b; margin-bottom: 8px; }
-        .badge-itic { background: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .badge-live { background: #16a34a; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
 
-        /* Realtime pulse status */
         .status-box {
-            font-size: 11px; padding: 6px; background: #f0fdf4; border: 1px solid #bbf7d0;
+            font-size: 11px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0;
             border-radius: 6px; margin-bottom: 8px; font-weight: 600; color: #166534;
             display: flex; align-items: center; justify-content: space-between;
         }
@@ -40,7 +39,6 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
-        /* Search Box & Select */
         .search-container { margin-bottom: 8px; }
         .search-input, .select-box {
             width: 100%; padding: 7px 10px; border-radius: 6px;
@@ -48,71 +46,56 @@
             background: #fff; font-weight: 600; color: #1e293b;
         }
 
-        /* Filter buttons */
         .filter-section { padding-top: 6px; border-top: 1px solid #e2e8f0; }
         .filter-title { font-size: 11px; font-weight: 600; color: #334155; margin-bottom: 4px; }
         .filter-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
         .btn-filter {
             flex: 1; padding: 6px 4px; border: 1px solid #cbd5e1;
             background: #f8fafc; color: #475569; border-radius: 6px;
-            font-size: 10px; font-weight: 600; cursor: pointer;
-            transition: all 0.2s ease; text-align: center; white-space: nowrap;
+            font-size: 10px; font-weight: 600; cursor: pointer; text-align: center; white-space: nowrap;
         }
-        .btn-filter.active-house { background: #e11d48; color: white; border-color: #e11d48; }
-        .btn-filter.active-road { background: #d97706; color: white; border-color: #d97706; }
+        .btn-filter.active-flood { background: #dc2626; color: white; border-color: #dc2626; }
         .btn-filter.active-all { background: #0284c7; color: white; border-color: #0284c7; }
 
-        /* Event Sidebar List */
-        .event-list { max-height: 150px; overflow-y: auto; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+        .event-list { max-height: 160px; overflow-y: auto; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
         .event-item { font-size: 11px; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; cursor: pointer; }
         .event-item:hover { background-color: #f8fafc; }
-        .event-type-badge { font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px; font-weight: bold; color: white; }
-        .bg-house { background-color: #e11d48; }
-        .bg-road { background-color: #d97706; }
 
-        /* Popup styling */
         .popup-content { width: 240px; }
         .popup-content h3 { margin: 0 0 4px 0; font-size: 14px; color: #0f172a; }
         .badge { display: inline-block; padding: 2px 6px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-bottom: 4px; }
-        .btn-refresh-data {
-            width: 100%; margin-top: 6px; padding: 5px; background: #2563eb;
-            color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;
-        }
+        .cctv-preview { width: 100%; height: 130px; object-fit: cover; border-radius: 6px; margin-top: 4px; border: 1px solid #cbd5e1; background: #f1f5f9; }
         .meta-text { font-size: 10px; color: #64748b; margin-top: 4px; text-align: right; }
     </style>
 </head>
 <body>
 
     <div class="info-card">
-        <h2>🌊 รายงานน้ำท่วม Real-time (iTIC)</h2>
-        <div class="subtitle">ดึงข้อมูลเหตุการณ์สดข้ามโดเมนจาก <span class="badge-itic">iTIC Live Feed</span></div>
+        <h2>🌊 รายงานสถานะน้ำท่วม Real-time</h2>
+        <div class="subtitle">เชื่อมต่อระบบข้อมูลสด <span class="badge-live">iTIC & Longdo Live</span></div>
         
         <div class="status-box">
-            <div><span class="pulse-dot"></span> <span id="statusText">กำลังดึงข้อมูลสด...</span></div>
-            <button onclick="fetchITICRealtimeData()" style="font-size:10px; cursor:pointer; padding:2px 5px;">🔄 โหลดใหม่</button>
+            <div><span class="pulse-dot"></span> <span id="statusText">กำลังดึงข้อมูล Real-time...</span></div>
+            <button onclick="loadRealtimeData()" style="font-size:10px; cursor:pointer; padding:2px 6px; background:#fff; border:1px solid #cbd5e1; border-radius:4px;">🔄 ดึงสดใหม่</button>
         </div>
 
         <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 ค้นหาถนน, สถานที่, จังหวัด..." oninput="onSearchChange()">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 ค้นหาจุดเกิดเหตุ, ถนน, อำเภอ..." oninput="onSearchChange()">
             
             <select id="provinceSelect" class="select-box" onchange="onProvinceChange()">
-                <option value="ALL">📍 แสดงทุกจังหวัดทั่วประเทศ</option>
+                <option value="ALL">📍 แสดงข้อมูลสดทุกจังหวัดทั่วประเทศ</option>
                 <option value="กรุงเทพมหานคร">กรุงเทพมหานคร</option>
                 <option value="สมุทรปราการ">สมุทรปราการ</option>
                 <option value="นนทบุรี">นนทบุรี</option>
                 <option value="ปทุมธานี">ปทุมธานี</option>
-                <option value="เชียงใหม่">เชียงใหม่</option>
-                <option value="อุบลราชธานี">อุบลราชธานี</option>
-                <option value="นครศรีธรรมราช">นครศรีธรรมราช</option>
             </select>
         </div>
 
         <div class="filter-section">
-            <div class="filter-title">เลือกประเภทเหตุการณ์:</div>
+            <div class="filter-title">ตัวกรองสภาวะ:</div>
             <div class="filter-buttons">
-                <button id="btnHouse" class="btn-filter" onclick="setFilter('house')">🏠 น้ำท่วมบ้าน/ชุมชน (<span id="houseCount">0</span>)</button>
-                <button id="btnRoad" class="btn-filter" onclick="setFilter('road')">🚗 น้ำท่วมถนน (<span id="roadCount">0</span>)</button>
-                <button id="btnAll" class="btn-filter active-all" onclick="setFilter('all')">📍 รวมทั้งหมด (<span id="totalCount">0</span>)</button>
+                <button id="btnFlood" class="btn-filter active-flood" onclick="setFilter('flood')">⚠️ เฉพาะน้ำท่วม/น้ำขัง (<span id="floodCount">0</span>)</button>
+                <button id="btnAll" class="btn-filter" onclick="setFilter('all')">📍 จุดทั้งหมด (<span id="totalCount">0</span>)</button>
             </div>
         </div>
 
@@ -123,77 +106,96 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([13.7563, 100.5018], 8);
+        const map = L.map('map').setView([13.7563, 100.5018], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
-            attribution: '© OpenStreetMap contributors | Real-time Data from iTIC Foundation'
+            attribution: '© OpenStreetMap contributors | Real-time Stream'
         }).addTo(map);
 
-        // URL Feed ข้อมูลของ iTIC (ผ่าน CORS Proxy เพื่อให้ดึงบน GitHub Pages ได้)
-        const ITIC_FEED_URL = "https://live.iticfoundation.org/api/get_events.php"; 
-        const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(ITIC_FEED_URL);
-
-        let realTimeFloodEvents = [];
+        const LONGDO_API_KEY = "8df7c58d93c1a2fdcaee05f9fe3e2b93";
+        
+        let allRealtimeLocations = [];
         let markersLayerGroup = L.layerGroup().addTo(map);
         let markerInstances = {};
-        let currentFilter = 'all'; 
+        let currentFilter = 'flood'; 
         let currentProvince = 'ALL';  
         let searchQuery = '';
 
-        // 1. ฟังก์ชันดึงข้อมูลเหตุการณ์สดจาก iTIC Live แบบ Real-time
-        async function fetchITICRealtimeData() {
+        // ดึงข้อมูลสดจาก iTIC Live & Longdo API ผ่าน Proxy
+        async function loadRealtimeData() {
             const statusText = document.getElementById('statusText');
-            statusText.innerText = "กำลังอัปเดตข้อมูลสด...";
+            statusText.innerText = "กำลังดึงข้อมูลสด...";
 
             try {
-                // ดึงข้อมูล Real-time จาก iTIC Feed
-                const response = await fetch(PROXY_URL + "&_t=" + new Date().getTime());
-                
-                if (!response.ok) throw new Error("Network response was not ok");
-                
-                const data = await response.json();
+                // 1. ดึงข้อมูลเหตุการณ์จราจร/ภัยพิบัติ Real-time จาก iTIC
+                const iticUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://live.iticfoundation.org/api/get_events.php");
+                const longdoUrl = `https://api.allorigins.win/raw?url=` + encodeURIComponent(`https://api.longdo.com/traffic/json/cameras?key=${LONGDO_API_KEY}`);
 
-                // คัดกรองประเภทเหตุการณ์ที่เป็นน้ำท่วม / น้ำขังขะล้าง / ภัยพิบัติน้ำ
-                if (Array.isArray(data)) {
-                    realTimeFloodEvents = data.filter(ev => {
-                        const title = (ev.title || ev.description || "").toLowerCase();
-                        const type = (ev.type || "").toLowerCase();
-                        return title.includes("ท่วม") || title.includes("ขัง") || title.includes("flood") || type.includes("flood");
-                    }).map((ev, index) => {
-                        const isHouse = ev.title.includes("บ้าน") || ev.title.includes("ชุมชน") || ev.description.includes("บ้าน");
-                        return {
-                            id: ev.id || "ITIC-" + index,
-                            name: ev.title || "แจ้งเตือนสภาวะน้ำท่วม",
-                            location: ev.location || ev.address || "ไม่ระบุตำแหน่งชี้ชัด",
-                            lat: parseFloat(ev.lat),
-                            lng: parseFloat(ev.lng || ev.lon),
-                            province: ev.province || "ไม่ระบุ",
-                            type: isHouse ? "house" : "road",
-                            description: ev.description || "พบสภาวะน้ำท่วมขังในพื้นที่",
-                            updatedAt: ev.time || ev.created_at || "ล่าสุด"
-                        };
-                    });
+                const [iticRes, longdoRes] = await Promise.allSettled([
+                    fetch(iticUrl),
+                    fetch(longdoUrl)
+                ]);
+
+                let fetchedData = [];
+
+                // ประมวลผลข้อมูลจาก iTIC Live
+                if (iticRes.status === 'fulfilled') {
+                    const iticData = await iticRes.value.json();
+                    if (Array.isArray(iticData)) {
+                        iticData.forEach((ev, idx) => {
+                            if (ev.lat && (ev.lng || ev.lon)) {
+                                const title = ev.title || ev.description || "";
+                                const isFlooded = title.includes("ท่วม") || title.includes("ขัง") || title.includes("น้ำ");
+                                fetchedData.push({
+                                    id: "ITIC-" + (ev.id || idx),
+                                    name: ev.title || "เหตุการณ์ภัยพิบัติ/จราจร",
+                                    lat: parseFloat(ev.lat),
+                                    lng: parseFloat(ev.lng || ev.lon),
+                                    province: ev.province || "ไม่ระบุ",
+                                    isFlooded: isFlooded,
+                                    details: ev.description || ev.location || "รายงานจาก iTIC Live",
+                                    img: ev.image_url || "",
+                                    time: ev.time || "ล่าสุด"
+                                });
+                            }
+                        });
+                    }
                 }
 
-                statusText.innerText = `อัปเดตสดสำเร็จ! (${realTimeFloodEvents.length} จุด)`;
-                renderMap();
+                // ประมวลผลข้อมูลกล้องจาก Longdo
+                if (longdoRes.status === 'fulfilled') {
+                    const longdoData = await longdoRes.value.json();
+                    if (Array.isArray(longdoData)) {
+                        longdoData.forEach(cam => {
+                            if (cam.lat && (cam.long || cam.lng)) {
+                                fetchedData.push({
+                                    id: "LONGDO-" + cam.id,
+                                    name: cam.title || "กล้อง CCTV จราจร",
+                                    lat: parseFloat(cam.lat),
+                                    lng: parseFloat(cam.long || cam.lng),
+                                    province: "กทม./ปริมณฑล",
+                                    isFlooded: false, // กล้องทั่วไป
+                                    details: "กล้องส่องสภาพจราจรสด",
+                                    img: cam.url || cam.image || "",
+                                    time: "สดจากกล้อง"
+                                });
+                            }
+                        });
+                    }
+                }
+
+                if (fetchedData.length > 0) {
+                    allRealtimeLocations = fetchedData;
+                    statusText.innerText = `เชื่อมต่อสดสำเร็จ! (${allRealtimeLocations.length} จุด)`;
+                    renderMap();
+                } else {
+                    throw new Error("Empty data");
+                }
 
             } catch (error) {
-                console.warn("เกิดข้อผิดพลาดในการดึงข้อมูล iTIC สด สลับใช้ Fallback Stream:", error);
-                statusText.innerText = "เชื่อมต่อ Feed สำรอง iTIC...";
-                loadFallbackITICData();
+                console.warn("ไม่สามารถดึงข้อมูลสดผ่าน Proxy ได้:", error);
+                statusText.innerText = "ดึงข้อมูลสดไม่สำเร็จ (โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)";
             }
-        }
-
-        // กรณีการเชื่อมต่อ Feed iTIC หลักมีปัญหา ให้ใช้ชุดข้อมูลจำลองโครงสร้าง iTIC Real-time
-        function loadFallbackITICData() {
-            realTimeFloodEvents = [
-                { id: "ITIC-01", name: "น้ำท่วมขังชุมชนริมน้ำ", location: "ชุมชนวัดกวางทอง อ.เมือง", province: "สุโขทัย", lat: 17.0075, lng: 99.8234, type: "house", description: "แม่น้ำยมล้นตลิ่งเข้าท่วมบ้านเรือนเสมอฟุตบาท", updatedAt: "สดเมื่อสักครู่" },
-                { id: "ITIC-02", name: "น้ำท่วมขังบนผิวจราจร", location: "ถนนรัชดาภิเษก (แยกลาดพร้าว)", province: "กรุงเทพมหานคร", lat: 13.8062, lng: 100.5739, type: "road", description: "น้ำรอการระบายความสูงประมาณ 10-15 ซม. เลนซ้าย", updatedAt: "สดเมื่อสักครู่" },
-                { id: "ITIC-03", name: "น้ำหนุนท่วมบ้านเรือนประชาชน", location: "ซอยวัดศรีเทพา อ.บางพลี", province: "สมุทรปราการ", lat: 13.6338, lng: 100.6273, type: "house", description: "น้ำเค็มหนุนท่วมเข้าพื้นซอยและลานบ้านขังสูง", updatedAt: "สดเมื่อสักครู่" },
-                { id: "ITIC-04", name: "น้ำท่วมขังทางลอดใต้สะพาน", location: "ห้าแยกปากเกร็ด", province: "นนทบุรี", lat: 13.9075, lng: 100.4988, type: "road", description: "มีน้ำท่วมขังผิวทางจราจรใต้สะพาน รถเล็กผ่านลำบาก", updatedAt: "สดเมื่อสักครู่" }
-            ];
-            renderMap();
         }
 
         function focusLocation(lat, lng, locId) {
@@ -209,48 +211,43 @@
             const eventContainer = document.getElementById('eventContainer');
             eventContainer.innerHTML = '';
 
-            let houseCnt = 0;
-            let roadCnt = 0;
+            let floodCnt = 0;
             let totalCnt = 0;
             let bounds = [];
 
-            realTimeFloodEvents.forEach(loc => {
+            allRealtimeLocations.forEach(loc => {
                 if (isNaN(loc.lat) || isNaN(loc.lng)) return;
                 if (currentProvince !== 'ALL' && !loc.province.includes(currentProvince)) return;
                 
-                const searchTxt = (loc.name + loc.location + loc.province + loc.description).toLowerCase();
+                const searchTxt = (loc.name + loc.details + loc.province).toLowerCase();
                 if (searchQuery && !searchTxt.includes(searchQuery.toLowerCase())) return;
 
                 totalCnt++;
-                if (loc.type === 'house') houseCnt++;
-                else roadCnt++;
+                if (loc.isFlooded) floodCnt++;
 
-                if (currentFilter === 'house' && loc.type !== 'house') return;
-                if (currentFilter === 'road' && loc.type !== 'road') return;
+                // กรองเฉพาะจุดน้ำท่วม
+                if (currentFilter === 'flood' && !loc.isFlooded) return;
 
                 bounds.push([loc.lat, loc.lng]);
 
-                // กำหนดสีหมุด
-                const isHouse = loc.type === 'house';
-                const colorClass = isHouse ? '#e11d48' : '#d97706';
-                const badgeText = isHouse ? '🏠 น้ำท่วมบ้าน/ชุมชน' : '🚗 น้ำท่วมถนน/การจราจร';
-                const badgeStyle = isHouse ? 'background-color: #ffe4e6; color: #9f1239;' : 'background-color: #fef3c7; color: #92400e;';
-
+                const colorClass = loc.isFlooded ? '#dc2626' : '#0284c7';
                 const customIcon = L.divIcon({
                     className: 'custom-pin',
-                    html: `<div style="background-color: ${colorClass}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.4);"></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
+                    html: `<div style="background-color: ${colorClass}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
                 });
 
                 const popupHtml = `
                     <div class="popup-content">
-                        <h3>⚠️ ${loc.name}</h3>
-                        <span class="badge" style="${badgeStyle}">${badgeText}</span>
+                        <h3>${loc.isFlooded ? '⚠️' : '📹'} ${loc.name}</h3>
+                        <span class="badge" style="${loc.isFlooded ? 'background:#fee2e2; color:#991b1b;' : 'background:#e0f2fe; color:#0369a1;'}">
+                            ${loc.isFlooded ? '⚠️ พบสภาวะน้ำท่วม/ขัง' : '📷 จุดตรวจเช็ก CCTV'}
+                        </span>
                         <br>
-                        <small><b>สถานที่:</b> ${loc.location}</small><br>
-                        <small><b>รายละเอียด iTIC:</b> ${loc.description}</small>
-                        <div class="meta-text">⏰ รายงานสดเมื่อ: ${loc.updatedAt}</div>
+                        <small><b>รายละเอียด:</b> ${loc.details}</small>
+                        ${loc.img ? `<img class="cctv-preview" src="${loc.img}" alt="ภาพสด">` : ''}
+                        <div class="meta-text">⏰ อัปเดต: ${loc.time}</div>
                     </div>
                 `;
 
@@ -258,28 +255,23 @@
                 markersLayerGroup.addLayer(marker);
                 markerInstances[loc.id] = marker;
 
-                // เพิ่มลงรายการแถบข้าง
                 const item = document.createElement('div');
                 item.className = 'event-item';
                 item.onclick = () => focusLocation(loc.lat, loc.lng, loc.id);
-                
-                const bgClass = isHouse ? 'bg-house' : 'bg-road';
                 item.innerHTML = `
-                    <div>
-                        <b>${loc.name}</b> 
-                        <span class="event-type-badge ${bgClass}">${isHouse ? 'บ้านท่วม' : 'ถนนท่วม'}</span>
+                    <div style="color: ${loc.isFlooded ? '#dc2626' : '#0284c7'}; font-weight:bold;">
+                        ${loc.isFlooded ? '⚠️' : '📷'} ${loc.name}
                     </div>
-                    <div style="color:#64748b; font-size:10px;">📍 ${loc.location} (${loc.updatedAt})</div>
+                    <div style="color:#64748b; font-size:10px;">${loc.details}</div>
                 `;
                 eventContainer.appendChild(item);
             });
 
-            document.getElementById('houseCount').innerText = houseCnt;
-            document.getElementById('roadCount').innerText = roadCnt;
+            document.getElementById('floodCount').innerText = floodCnt;
             document.getElementById('totalCount').innerText = totalCnt;
 
             if (eventContainer.children.length === 0) {
-                eventContainer.innerHTML = '<div style="font-size:11px; color:#64748b;">ไม่พบเหตุการณ์น้ำท่วมสดในเงื่อนไขนี้</div>';
+                eventContainer.innerHTML = '<div style="font-size:11px; color:#64748b;">ไม่พบเหตุการณ์ในเงื่อนไขการค้นหานี้</div>';
             }
 
             if (bounds.length > 0 && !searchQuery) {
@@ -289,8 +281,7 @@
 
         function setFilter(filterType) {
             currentFilter = filterType;
-            document.getElementById('btnHouse').className = `btn-filter ${filterType === 'house' ? 'active-house' : ''}`;
-            document.getElementById('btnRoad').className = `btn-filter ${filterType === 'road' ? 'active-road' : ''}`;
+            document.getElementById('btnFlood').className = `btn-filter ${filterType === 'flood' ? 'active-flood' : ''}`;
             document.getElementById('btnAll').className = `btn-filter ${filterType === 'all' ? 'active-all' : ''}`;
             renderMap();
         }
@@ -305,11 +296,11 @@
             renderMap();
         }
 
-        // เริ่มต้นดึงข้อมูล Real-time
-        fetchITICRealtimeData();
+        // เริ่มต้นโหลดข้อมูล Real-time ทันที
+        loadRealtimeData();
 
-        // 🔄 ตั้งเวลาดึงข้อมูลใหม่ทุกๆ 1 นาที (60000 ms)
-        setInterval(fetchITICRealtimeData, 60000);
+        // Auto refresh ทุก 2 นาที
+        setInterval(loadRealtimeData, 120000);
     </script>
 </body>
 </html>
