@@ -3,49 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รายงานน้ำท่วม กทม. Real-time (iTIC Data)</title>
+    <title>รายงานสถานะน้ำท่วม กทม. Real-time (iTIC Data)</title>
     
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-        * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
-        #map { height: 100vh; width: 100vw; }
-        
-        .info-card {
-            position: absolute; top: 15px; left: 15px; z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 16px;
-            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            max-width: 320px; backdrop-filter: blur(5px);
+        * {
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
         }
-        .info-card h2 { margin: 0 0 6px 0; font-size: 16px; color: #0f172a; }
-        
-        /* แผงรายการเหตุการณ์ล่าสุด */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #map {
+            height: 100vh;
+            width: 100vw;
+        }
+        .info-card {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-width: 330px;
+            backdrop-filter: blur(5px);
+        }
+        .info-card h2 {
+            margin: 0 0 4px 0;
+            font-size: 17px;
+            color: #0f172a;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        .badge-itic {
+            background: #2563eb;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* ส่วนตัวกรอง (Filter Group) */
+        .filter-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .filter-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .btn-filter {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #475569;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .btn-filter:hover {
+            background: #f1f5f9;
+        }
+        .btn-filter.active {
+            background: #0284c7;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
+        }
+        .btn-filter.active-flood {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.25);
+        }
+
+        /* รายการเหตุการณ์ด่วน */
         .event-list {
-            max-height: 180px; overflow-y: auto; margin-top: 10px;
-            border-top: 1px solid #e2e8f0; padding-top: 8px;
+            max-height: 140px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
         }
         .event-item {
-            font-size: 12px; padding: 6px 0; border-bottom: 1px dashed #f1f5f9;
+            font-size: 12px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #f1f5f9;
         }
-        .event-title { font-weight: 600; color: #dc2626; }
-        .event-time { font-size: 10px; color: #64748b; }
+        .event-title {
+            font-weight: 600;
+            color: #dc2626;
+        }
+        .event-meta {
+            font-size: 11px;
+            color: #64748b;
+        }
 
-        .badge-itic {
-            background: #2563eb; color: white; padding: 2px 6px;
-            border-radius: 4px; font-size: 10px; font-weight: bold;
+        /* Popup Content */
+        .popup-content { width: 240px; }
+        .popup-content h3 { margin: 0 0 6px 0; font-size: 14px; color: #0f172a; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-bottom: 6px; }
+        .badge-normal { background-color: #dcfce7; color: #166534; }
+        .badge-flooded { background-color: #fee2e2; color: #991b1b; }
+        .cctv-preview {
+            width: 100%; height: 130px; object-fit: cover; border-radius: 6px;
+            margin-top: 6px; border: 1px solid #cbd5e1; background: #f1f5f9;
         }
+        .btn-refresh {
+            width: 100%; margin-top: 6px; padding: 5px; background: #0284c7;
+            color: white; border: none; border-radius: 4px; font-size: 11px;
+            font-weight: 600; cursor: pointer;
+        }
+        .meta-text { font-size: 10px; color: #64748b; margin-top: 4px; text-align: right; }
     </style>
 </head>
 <body>
 
     <div class="info-card">
-        <h2>🌊 สถิติ & เหตุการณ์น้ำท่วม กทม.</h2>
-        <span class="badge-itic">อ้างอิงข้อมูล: iTIC Foundation</span>
+        <h2>🌊 รายงานสถานะน้ำท่วม กทม.</h2>
+        <div class="subtitle">อ้างอิงจุดตรวจเช็ก CCTV & ข้อมูล <span class="badge-itic">iTIC Live</span></div>
         
+        <!-- ส่วนปุ่มตัวกรอง (Filter Group) -->
+        <div class="filter-section">
+            <div class="filter-title">ตัวกรองการแสดงผล:</div>
+            <div class="filter-buttons">
+                <button class="btn-filter active-flood" onclick="setFilter('flood')">🌊 เฉพาะจุดท่วม (<span id="floodCount">0</span>)</button>
+                <button class="btn-filter" onclick="setFilter('normal')">🟢 จุดปกติ (<span id="normalCount">0</span>)</button>
+                <button class="btn-filter" onclick="setFilter('all')">📍 ทั้งหมด (<span id="totalCount">0</span>)</button>
+            </div>
+        </div>
+
+        <!-- รายการเหตุการณ์น้ำท่วมล่าสุด -->
         <div id="eventContainer" class="event-list">
-            <div style="font-size: 12px; color: #64748b;">กำลังโหลดเหตุการณ์ล่าสุด...</div>
+            <div style="font-size: 11px; color: #64748b;">กำลังโหลดข้อมูลเหตุการณ์ล่าสุด...</div>
         </div>
     </div>
 
@@ -53,67 +168,177 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 1. ตั้งค่าแผนที่กรุงเทพฯ
         const map = L.map('map').setView([13.7563, 100.5018], 11);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-        // ตัวอย่างโครงสร้างข้อมูลเหตุการณ์น้ำท่วมที่ดึงมาจาก iTIC Live Data Feed
-        const iticFloodEvents = [
+        // 2. ข้อมูลจุดกล้องและเหตุการณ์น้ำท่วม (จำลองโครงสร้างจาก iTIC Live และ BMA CCTV)
+        const cctvLocations = [
             {
-                id: "ITIC-801",
-                title: "น้ำท่วมขังผิวจราจร",
-                location: "ถนนรัชดาภิเษก (หน้าแยกลาดพร้าว)",
+                id: "ITIC-01",
+                name: "แยกรัชดา-ลาดพร้าว",
                 lat: 13.8062,
                 lng: 100.5739,
-                severity: "สูง (ขังเกิน 15 ซม.)",
-                updated: "15:02 น.",
-                cctvUrl: "https://live.iticfoundation.org/assets/img/logo.png" // เปลี่ยนเป็น URL สแนปช็อตกล้องจริง
+                isFlooded: true,
+                waterLevel: "ขังสูงประมาณ 10-15 ซม. (เลนซ้ายสุด)",
+                baseUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=500&q=80",
+                updatedAt: "15:02 น."
             },
             {
-                id: "ITIC-802",
-                title: "เร่งระบายน้ำ",
-                location: "ถนนพัฒนาการ (ช่วงคลองลาว)",
+                id: "ITIC-02",
+                name: "ถนนศรีนครินทร์ (แยกพัฒนาการ)",
                 lat: 13.7336,
                 lng: 100.6461,
-                severity: "ปานกลาง",
-                updated: "14:55 น.",
-                cctvUrl: "https://live.iticfoundation.org/assets/img/logo.png"
+                isFlooded: true,
+                waterLevel: "ขังเสมอขอบฟุตบาท การจราจรเคลื่อนตัวช้า",
+                baseUrl: "https://images.unsplash.com/photo-1508873696983-2df515122519?w=500&q=80",
+                updatedAt: "14:55 น."
+            },
+            {
+                id: "ITIC-03",
+                name: "วงเวียนบางเขน (พหลโยธิน)",
+                lat: 13.8753,
+                lng: 100.5966,
+                isFlooded: true,
+                waterLevel: "มีน้ำขังเล็กน้อยบริเวณทางเลี้ยว",
+                baseUrl: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=500&q=80",
+                updatedAt: "14:48 น."
+            },
+            {
+                id: "ITIC-04",
+                name: "แยกอโศกมนตรี",
+                lat: 13.7370,
+                lng: 100.5604,
+                isFlooded: false,
+                waterLevel: "ผิวจราจรแห้งปกติ",
+                baseUrl: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500&q=80",
+                updatedAt: "15:00 น."
+            },
+            {
+                id: "ITIC-05",
+                name: "แยกพระราม 9",
+                lat: 13.7578,
+                lng: 100.5662,
+                isFlooded: false,
+                waterLevel: "สภาพการจราจรปกติ ไม่พบน้ำขัง",
+                baseUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=500&q=80",
+                updatedAt: "15:05 น."
             }
         ];
 
-        function renderEvents() {
-            const container = document.getElementById('eventContainer');
-            container.innerHTML = '';
+        // ตัวแปรเก็บ Layer ของ Marker ทั้งหมดบนแผนที่
+        let markersLayerGroup = L.layerGroup().addTo(map);
+        let currentFilter = 'flood'; // ค่าเริ่มต้น: แสดงเฉพาะจุดน้ำท่วม
 
-            iticFloodEvents.forEach(ev => {
-                // 1. เพิ่มในรายการแถบข้าง
-                const item = document.createElement('div');
-                item.className = 'event-item';
-                item.innerHTML = `
-                    <div class="event-title">⚠️ ${ev.title}</div>
-                    <div>${ev.location}</div>
-                    <div class="event-time">ระดับ: ${ev.severity} | ${ev.updated}</div>
-                `;
-                container.appendChild(item);
-
-                // 2. ปักหมุดบนแผนที่
-                const customIcon = L.divIcon({
-                    className: 'custom-pin',
-                    html: `<div style="background-color: #dc2626; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.3);"></div>`,
-                    iconSize: [18, 18]
-                });
-
-                L.marker([ev.lat, ev.lng], { icon: customIcon })
-                    .addTo(map)
-                    .bindPopup(`
-                        <b>⚠️ ${ev.title}</b><br>
-                        <b>จุดเกิดเหตุ:</b> ${ev.location}<br>
-                        <b>ระดับน้ำ:</b> ${ev.severity}<br>
-                        <small>อัปเดตเมื่อ: ${ev.updated}</small>
-                    `);
-            });
+        // 3. ฟังก์ชันดึงภาพใหม่ป้องกันแคช (Cache Busting)
+        function refreshImage(imgId, baseUrl, timeId) {
+            const imgEl = document.getElementById(imgId);
+            const timeEl = document.getElementById(timeId);
+            if (imgEl) {
+                const ts = new Date().getTime();
+                const sep = baseUrl.includes('?') ? '&' : '?';
+                imgEl.src = `${baseUrl}${sep}_t=${ts}`;
+                if (timeEl) {
+                    const now = new Date();
+                    timeEl.innerText = `อัปเดตล่าสุด: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')} น.`;
+                }
+            }
         }
 
-        renderEvents();
+        // 4. ฟังก์ชันแสดงหมุดตาม Filter ที่เลือก
+        function renderMap() {
+            markersLayerGroup.clearLayers();
+            const eventContainer = document.getElementById('eventContainer');
+            eventContainer.innerHTML = '';
+
+            let floodCnt = 0;
+            let normalCnt = 0;
+
+            cctvLocations.forEach(loc => {
+                if (loc.isFlooded) floodCnt++;
+                else normalCnt++;
+
+                // เงื่อนไขการกรองจุดปักหมุด
+                if (currentFilter === 'flood' && !loc.isFlooded) return;
+                if (currentFilter === 'normal' && loc.isFlooded) return;
+
+                // สร้าง Marker
+                const colorClass = loc.isFlooded ? '#dc2626' : '#22c55e';
+                const customIcon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="background-color: ${colorClass}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                });
+
+                const imgId = `img-${loc.id}`;
+                const timeId = `time-${loc.id}`;
+
+                const popupHtml = `
+                    <div class="popup-content">
+                        <h3>${loc.name}</h3>
+                        <span class="badge ${loc.isFlooded ? 'badge-flooded' : 'badge-normal'}">
+                            ${loc.isFlooded ? '⚠️ พบน้ำท่วมขัง' : '✅ ปกติ'}
+                        </span>
+                        <br>
+                        <small><b>สถานะ:</b> ${loc.waterLevel}</small>
+                        <img id="${imgId}" class="cctv-preview" src="${loc.baseUrl}" alt="ภาพ CCTV">
+                        <button class="btn-refresh" onclick="refreshImage('${imgId}', '${loc.baseUrl}', '${timeId}')">🔄 ดึงภาพสดใหม่</button>
+                        <div id="${timeId}" class="meta-text">อัปเดตล่าสุด: ${loc.updatedAt}</div>
+                    </div>
+                `;
+
+                const marker = L.marker([loc.lat, loc.lng], { icon: customIcon })
+                    .bindPopup(popupHtml);
+
+                marker.on('popupopen', () => refreshImage(imgId, loc.baseUrl, timeId));
+                markersLayerGroup.addLayer(marker);
+
+                // หากเป็นจุดน้ำท่วม ให้เพิ่มลงในรายการแถบข้างด้วย
+                if (loc.isFlooded) {
+                    const item = document.createElement('div');
+                    item.className = 'event-item';
+                    item.innerHTML = `
+                        <div class="event-title">⚠️ ${loc.name}</div>
+                        <div class="event-meta">${loc.waterLevel}</div>
+                    `;
+                    eventContainer.appendChild(item);
+                }
+            });
+
+            // อัปเดตตัวเลขอัตโนมัติบนปุ่ม Filter
+            document.getElementById('floodCount').innerText = floodCnt;
+            document.getElementById('normalCount').innerText = normalCnt;
+            document.getElementById('totalCount').innerText = cctvLocations.length;
+
+            if (eventContainer.children.length === 0) {
+                eventContainer.innerHTML = '<div style="font-size:11px; color:#64748b;">ไม่พบรายการน้ำท่วมในตัวกรองนี้</div>';
+            }
+        }
+
+        // 5. ฟังก์ชันเปลี่ยน Filter เมื่อกดปุ่ม
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // เปลี่ยนสไตล์ปุ่มให้รู้ว่าเลือกตัวไหนอยู่
+            const buttons = document.querySelectorAll('.btn-filter');
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'active-flood');
+            });
+
+            if (event.target.classList.contains('btn-filter')) {
+                if (filterType === 'flood') event.target.classList.add('active-flood');
+                else event.target.classList.add('active');
+            }
+
+            renderMap();
+        }
+
+        // แสดงผลครั้งแรก
+        renderMap();
     </script>
 </body>
 </html>
